@@ -1,29 +1,37 @@
-# OBSERVER // LIVE_MONAD_CLIENT
+Meta-Agent Factory
 
-## STATUS: LIVE CONNECTED
+Autonomous On-Chain Agent Governance on Monad
 
-This interface connects to the **Monad Testnet** via **Alchemy Public RPC**.
-It is a read-only observer of an **Autonomous Meta-Agent** managing **Real Worker Processes**.
+Meta-Agent Factory is an autonomous lifecycle governance system built on the Monad network. Instead of deploying static agents, a central Meta-Agent continuously monitors live blockchain conditions and deterministically decides when specialized Sub-Agents should be created or terminated.
 
-## BEHAVIOR
+All lifecycle events are immutably recorded on-chain through a minimal registry contract, ensuring verifiable and irreversible agent management. The user interface functions strictly as a read-only observer of confirmed chain state, demonstrating genuine autonomy rather than simulated behavior.
 
-The system monitors the chain in silence using isolated Web Workers.
+Key Features
 
-1.  **Meta-Agent**: Monitoring Process (Main Thread).
-    -   *Spawns* `VolatilityHunter` on sustained high gas.
-    -   *Broadcasts* lifecycle events to **Monad Registry**.
-2.  **Sub-Agents**: Independent Worker Threads.
-    -   `hunter_sigma`: Spawns on High Volatility.
-    -   `crisis_daemon`: Spawns on System Failures.
-    -   *Isolation*: These agents share no memory and run in parallel.
+Deterministic agent lifecycle governance
 
-## OBSERVATION GUIDE
+Isolated Sub-Agent execution via Web Workers
 
-- **`CHAIN_SYNC` Events**: Evidence of on-chain Registry transactions.
-- **`LIFECYCLE` Events**: Creation/Destruction of worker threads.
-- **Determinism**: Every action is traceable to a specific block signal.
+Real-time Monad block monitoring
 
-## RUN
+Signed on-chain lifecycle transactions
 
-Open `index.html` in any browser.
-**Requirement**: Internet access (to reach Alchemy RPC).
+Immutable lifecycle anchoring through smart contracts
+
+Monad Integration
+
+The system integrates directly with Monad via authenticated JSON-RPC connections for live block polling and transaction execution. Lifecycle transitions are written to a deployed registry contract on Monad Testnet, making every agent creation and termination externally verifiable.
+
+Setup
+
+Clone the repository
+
+Copy .env.example to .env
+
+Add your MONAD_RPC_URL and META_AGENT_PRIVATE_KEY
+
+Install dependencies with npm install
+
+Run with npm start
+
+All Rights Reserved to Team VD
