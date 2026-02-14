@@ -172,24 +172,26 @@ class MetaAgent {
         // Finality Tracking
         this.tombstones = new Set();
 
-        // --- CONFIGURATION SAFETY CHECKS ---
-        this.monadRpc = window.MONAD_RPC_URL;
+        // ON-CHAIN IDENTITY (MONAD)
+        // ON-CHAIN IDENTITY (MONAD)
+        // CHECK: The private key must be provided via window configuration.
+        const pk = window.META_AGENT_PRIVATE_KEY;
 
-        if (!this.monadRpc || this.monadRpc.includes("REPLACE_WITH")) {
-            const msg = "CRITICAL: MONAD_RPC_URL missing in index.html. Initialization stopped.";
-            console.error(msg);
-            UI.renderEvent({ type: 'system', state: 'degraded', message: msg });
-            throw new Error(msg); // Stop execution
+        if (pk && !pk.includes("REPLACE_WITH")) {
+            this.identity = new ethers.Wallet(pk);
+        } else {
+            console.error("META_AGENT_PRIVATE_KEY not configured in index.html");
+            throw new Error("CRITICAL: window.META_AGENT_PRIVATE_KEY is missing or default. Please configure index.html");
         }
 
-        // ON-CHAIN IDENTITY (MONAD)
-        const pk = window.META_AGENT_PRIVATE_KEY;
-        this.observationOnly = false;
-
-        this.provider = new ethers.providers.JsonRpcProvider(this.monadRpc);
+        // Use Global Config for consistency
+        this.monadRpc = CONFIG.rpcUrl;
 
         // READ THE DEPLOYED CONTRACT ADDRESS (User must update this after deployment)
         this.registryAddr = '0x04A7baE9686B51109ce4EC23dFfa93Bd43bE8026';
+
+        this.provider = new ethers.providers.JsonRpcProvider(this.monadRpc);
+        this.signer = this.identity.connect(this.provider);
 
         // Minimal Registry ABI (Events Only)
         this.abi = [
@@ -198,35 +200,7 @@ class MetaAgent {
             "event AgentRegistered(address indexed meta, bytes32 indexed agentId, uint256 blockNumber)",
             "event AgentDeregistered(address indexed meta, bytes32 indexed agentId, uint256 blockNumber)"
         ];
-
-        if (pk && !pk.includes("REPLACE_WITH")) {
-            // FULL AUTONOMOUS MODE
-            try {
-                this.identity = new ethers.Wallet(pk);
-                this.signer = this.identity.connect(this.provider);
-                this.contract = new ethers.Contract(this.registryAddr, this.abi, this.signer);
-
-                UI.renderEvent({
-                    type: 'system',
-                    message: `META_ID_INIT: ${this.identity.address.substr(0, 10)}... // network:monad`
-                });
-            } catch (e) {
-                console.error("Invalid Private Key provided", e);
-                // Fallback to observation
-                this.observationOnly = true;
-            }
-        } else {
-            // OBSERVATION-ONLY MODE (Safe for Public GitHub)
-            this.observationOnly = true;
-            // Read-only contract instance
-            this.contract = new ethers.Contract(this.registryAddr, this.abi, this.provider);
-
-            console.log("Running in observation-only mode");
-            UI.renderEvent({
-                type: 'system',
-                message: `META_ID_INIT: OBSERVER_MODE // signing_disabled`
-            });
-        }
+        this.contract = new ethers.Contract(this.registryAddr, this.abi, this.signer);
 
         this.pendingTypes = new Map(); // id -> type
 
@@ -242,18 +216,15 @@ class MetaAgent {
                 this.handleAgentDeregistered(id, blockNum);
             });
         }
+
+        UI.renderEvent({
+            type: 'system',
+            message: `META_ID_INIT: ${this.identity.address.substr(0, 10)}... // network:monad`
+        });
     }
 
     async broadcastLifecycle(id, action, detail) {
         // STRICT: Real RPC attempt only. No simulation.
-
-        if (this.observationOnly) {
-            UI.renderEvent({
-                type: 'lifecycle',
-                message: `OBSERVATION: signing_skipped [${action}] // reason:observer_mode`
-            });
-            return;
-        }
 
         // Check if we have a valid contract
         if (!this.contract || this.contract.address === ethers.constants.AddressZero) {
