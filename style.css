@@ -1,0 +1,173 @@
+:root {
+    --bg-color: #0a0a0a;
+    --text-primary: #888888;
+    --text-dim: #444444;
+    --accent-obs: #5c6370;
+    --accent-dec: #828997;
+    --accent-exec: #abb2bf;
+    --accent-sys: #4b5263;
+
+    --state-success: #555555;
+    --state-partial: #666666;
+    --state-failed: #777777;
+    --state-degraded: #5a4b4b;
+    /* Subtle red tint only if you look closely */
+
+    --font-mono: 'JetBrains Mono', 'Courier New', Courier, monospace;
+    --spacing-unit: 4px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-x: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+main::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+}
+
+#event-log {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-unit);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-bottom: 30vh;
+    /* Space at bottom for "future" */
+}
+
+.event {
+    display: grid;
+    grid-template-columns: 180px 100px 1fr;
+    gap: 2rem;
+    opacity: 0.9;
+    transition: opacity 0.5s ease;
+    user-select: text;
+    cursor: text;
+    padding: 2px 0;
+}
+
+.event:hover {
+    opacity: 1;
+}
+
+.timestamp {
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+.type {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+}
+
+.content {
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.meta {
+    display: block;
+    color: var(--text-dim);
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+/* Event Types */
+.type-observation {
+    color: var(--accent-obs);
+}
+
+.type-decision {
+    color: var(--accent-dec);
+}
+
+.type-execution {
+    color: var(--accent-exec);
+    padding-top: 12px;
+    padding-bottom: 12px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Subtle spacing for irreversible actions */
+.type-system {
+    color: var(--accent-sys);
+    font-style: italic;
+}
+
+/* States */
+.state-failed .content {
+    text-decoration-color: var(--text-dim);
+    text-decoration-style: dotted;
+}
+
+.state-degraded {
+    opacity: 0.6;
+}
+
+/* Latency Visualization - subtly implies delay via spacing */
+.latency-high {
+    margin-top: 1rem;
+}
+
+/* Hash styling */
+.hash {
+    font-family: var(--font-mono);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+/* Correlation highlight functionality */
+.event[data-cid] {
+    transition: background-color 0.2s ease, opacity 0.5s ease;
+}
+
+/* When a CID is hovered, dim others */
+body.has-hover .event {
+    opacity: 0.3;
+}
+
+body.has-hover .event.active-cid {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Global State Modifiers */
+body.mode-degraded {
+    background-color: #0f0a0a;
+    /* Very subtle red shift */
+}
+
+/* STRICT IRREVERSIBILITY: Past events must not change appearance when state changes.
+   We removed the filter on .event here to ensure history remains visually immutable.
+*/
+
+::selection {
+    background: #333;
+    color: #fff;
+}

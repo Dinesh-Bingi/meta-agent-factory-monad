@@ -1,0 +1,21 @@
+{
+  "name": "autonomous-observer",
+  "version": "1.0.0",
+  "description": "This interface connects to the **Monad Testnet** via **Alchemy Public RPC**.\r It is a read-only observer of an **Autonomous Meta-Agent** managing **Real Worker Processes**.",
+  "main": "deploy.js",
+  "scripts": {
+    "start": "node system.js",
+    "meta": "node system.js",
+    "register": "node register.js",
+    "deploy": "node deploy.js",
+    "serve": "npx serve ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "ethers": "^5.7.2",
+    "solc": "^0.8.33"
+  }
+}
