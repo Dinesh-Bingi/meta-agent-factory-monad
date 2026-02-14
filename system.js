@@ -8,13 +8,16 @@
 
 const CONFIG = {
     // MONAD RPC Endpoint (Alchemy)
-    rpcUrl: process.env.MONAD_RPC_URL,
+    rpcUrl: window.MONAD_RPC_URL,
     pollInterval: 1000, // Monad block time is ~1s
     maxRetries: 1
 };
 
-if (!CONFIG.rpcUrl) {
-    throw new Error("CRITICAL: process.env.MONAD_RPC_URL is missing. Please configure .env");
+if (!CONFIG.rpcUrl || CONFIG.rpcUrl.includes("REPLACE_WITH")) {
+    console.error("MONAD_RPC_URL not configured in index.html");
+    // We do not throw here to allow the UI to perhaps show a degraded state, 
+    // but the critical check in MetaAgent will catch it or the loop will fail.
+    // Actually, following instructions to "log a clear error".
 }
 
 const UI = {
@@ -169,24 +172,24 @@ class MetaAgent {
         // Finality Tracking
         this.tombstones = new Set();
 
-        // ON-CHAIN IDENTITY (MONAD)
-        // CHECK: The private key must be provided via environment variables.
-        const pk = process.env.META_AGENT_PRIVATE_KEY;
+        // --- CONFIGURATION SAFETY CHECKS ---
+        this.monadRpc = window.MONAD_RPC_URL;
 
-        if (pk) {
-            this.identity = new ethers.Wallet(pk);
-        } else {
-            throw new Error("CRITICAL: process.env.META_AGENT_PRIVATE_KEY is missing. Please configure .env");
+        if (!this.monadRpc || this.monadRpc.includes("REPLACE_WITH")) {
+            const msg = "CRITICAL: MONAD_RPC_URL missing in index.html. Initialization stopped.";
+            console.error(msg);
+            UI.renderEvent({ type: 'system', state: 'degraded', message: msg });
+            throw new Error(msg); // Stop execution
         }
 
-        // Use Global Config for consistency
-        this.monadRpc = CONFIG.rpcUrl;
+        // ON-CHAIN IDENTITY (MONAD)
+        const pk = window.META_AGENT_PRIVATE_KEY;
+        this.observationOnly = false;
+
+        this.provider = new ethers.providers.JsonRpcProvider(this.monadRpc);
 
         // READ THE DEPLOYED CONTRACT ADDRESS (User must update this after deployment)
         this.registryAddr = '0x04A7baE9686B51109ce4EC23dFfa93Bd43bE8026';
-
-        this.provider = new ethers.providers.JsonRpcProvider(this.monadRpc);
-        this.signer = this.identity.connect(this.provider);
 
         // Minimal Registry ABI (Events Only)
         this.abi = [
@@ -195,7 +198,35 @@ class MetaAgent {
             "event AgentRegistered(address indexed meta, bytes32 indexed agentId, uint256 blockNumber)",
             "event AgentDeregistered(address indexed meta, bytes32 indexed agentId, uint256 blockNumber)"
         ];
-        this.contract = new ethers.Contract(this.registryAddr, this.abi, this.signer);
+
+        if (pk && !pk.includes("REPLACE_WITH")) {
+            // FULL AUTONOMOUS MODE
+            try {
+                this.identity = new ethers.Wallet(pk);
+                this.signer = this.identity.connect(this.provider);
+                this.contract = new ethers.Contract(this.registryAddr, this.abi, this.signer);
+
+                UI.renderEvent({
+                    type: 'system',
+                    message: `META_ID_INIT: ${this.identity.address.substr(0, 10)}... // network:monad`
+                });
+            } catch (e) {
+                console.error("Invalid Private Key provided", e);
+                // Fallback to observation
+                this.observationOnly = true;
+            }
+        } else {
+            // OBSERVATION-ONLY MODE (Safe for Public GitHub)
+            this.observationOnly = true;
+            // Read-only contract instance
+            this.contract = new ethers.Contract(this.registryAddr, this.abi, this.provider);
+
+            console.log("Running in observation-only mode");
+            UI.renderEvent({
+                type: 'system',
+                message: `META_ID_INIT: OBSERVER_MODE // signing_disabled`
+            });
+        }
 
         this.pendingTypes = new Map(); // id -> type
 
@@ -211,15 +242,18 @@ class MetaAgent {
                 this.handleAgentDeregistered(id, blockNum);
             });
         }
-
-        UI.renderEvent({
-            type: 'system',
-            message: `META_ID_INIT: ${this.identity.address.substr(0, 10)}... // network:monad`
-        });
     }
 
     async broadcastLifecycle(id, action, detail) {
         // STRICT: Real RPC attempt only. No simulation.
+
+        if (this.observationOnly) {
+            UI.renderEvent({
+                type: 'lifecycle',
+                message: `OBSERVATION: signing_skipped [${action}] // reason:observer_mode`
+            });
+            return;
+        }
 
         // Check if we have a valid contract
         if (!this.contract || this.contract.address === ethers.constants.AddressZero) {
